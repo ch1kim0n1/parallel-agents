@@ -2472,6 +2472,19 @@ body:not(.is-resizing-x) .sidebar-wrapper {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
+/* Stagger breathe across up to 10 cards in a kanban column so concurrent
+   working agents don't pulse in unison (240ms steps across a 2.4s cycle). */
+.kanban-column-body .session-card:nth-child(1) .status-badge[data-breathing] .status-badge__dot { animation-delay: 0ms; }
+.kanban-column-body .session-card:nth-child(2) .status-badge[data-breathing] .status-badge__dot { animation-delay: 240ms; }
+.kanban-column-body .session-card:nth-child(3) .status-badge[data-breathing] .status-badge__dot { animation-delay: 480ms; }
+.kanban-column-body .session-card:nth-child(4) .status-badge[data-breathing] .status-badge__dot { animation-delay: 720ms; }
+.kanban-column-body .session-card:nth-child(5) .status-badge[data-breathing] .status-badge__dot { animation-delay: 960ms; }
+.kanban-column-body .session-card:nth-child(6) .status-badge[data-breathing] .status-badge__dot { animation-delay: 1200ms; }
+.kanban-column-body .session-card:nth-child(7) .status-badge[data-breathing] .status-badge__dot { animation-delay: 1440ms; }
+.kanban-column-body .session-card:nth-child(8) .status-badge[data-breathing] .status-badge__dot { animation-delay: 1680ms; }
+.kanban-column-body .session-card:nth-child(9) .status-badge[data-breathing] .status-badge__dot { animation-delay: 1920ms; }
+.kanban-column-body .session-card:nth-child(10) .status-badge[data-breathing] .status-badge__dot { animation-delay: 2160ms; }
+
 .status-badge[data-tone="working"] {
   --status-tone: var(--color-status-working);
 }
