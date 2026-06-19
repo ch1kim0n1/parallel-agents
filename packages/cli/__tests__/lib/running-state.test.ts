@@ -20,7 +20,10 @@ describe("running-state", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps running.json when the pid probe returns EPERM", async () => {
+  it("prunes running.json when the daemon pid probe returns EPERM (PID reuse guard)", async () => {
+    // EPERM on kill(pid, 0) for a recorded daemon PID means the PID was reused by a
+    // different-user process after the AO daemon crashed. isDaemonAlive() treats this
+    // as dead so the stale running.json is pruned and `ao start` can proceed.
     const runningState = await import("../../src/lib/running-state.js");
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
       const error = new Error("operation not permitted") as Error & { code?: string };
@@ -39,14 +42,9 @@ describe("running-state", () => {
     const state = await runningState.getRunning();
     const stateFile = join(testHome, ".agent-orchestrator", "running.json");
 
-    expect(state).toEqual({
-      pid: 424242,
-      configPath: "/tmp/agent-orchestrator.yaml",
-      port: 4321,
-      startedAt: new Date("2026-04-19T00:00:00.000Z").toISOString(),
-      projects: ["my-app"],
-    });
-    expect(existsSync(stateFile)).toBe(true);
+    // With the PID-reuse fix, EPERM is treated as dead → stale entry pruned.
+    expect(state).toBeNull();
+    expect(existsSync(stateFile)).toBe(false);
     expect(killSpy).toHaveBeenCalledWith(424242, 0);
   });
 

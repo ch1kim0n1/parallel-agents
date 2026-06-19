@@ -9,9 +9,9 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
-  rmdirSync,
   statSync,
   unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -63,22 +63,45 @@ function ensureStateDir(): void {
   mkdirSync(join(homedir(), ".agent-orchestrator"), { recursive: true });
 }
 
+let _atomicsWarnedOnce = false;
+
 function sleepSync(ms: number): void {
-  const buffer = new SharedArrayBuffer(4);
-  const view = new Int32Array(buffer);
-  Atomics.wait(view, 0, 0, ms);
+  try {
+    const buffer = new SharedArrayBuffer(4);
+    const view = new Int32Array(buffer);
+    Atomics.wait(view, 0, 0, ms);
+  } catch {
+    // Atomics.wait() is unavailable in some environments (Spectre-mitigated
+    // contexts, Worker threads). Fall back to a bounded busy-wait. The lock
+    // acquisition loop calls sleepSync(25) with a 5 s deadline, so CPU
+    // exposure is capped at ~200 × 25 ms = 5 s total worst-case.
+    if (!_atomicsWarnedOnce) {
+      _atomicsWarnedOnce = true;
+      try {
+        process.stderr.write("[ao] Atomics.wait() unavailable, using busy-wait fallback\n");
+      } catch { /* best effort */ }
+    }
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* busy-wait, bounded by ms */ }
+  }
 }
 
 function acquireRegistryLock(): () => void {
   ensureStateDir();
   const lockDir = getLockDir();
+  const lockPidFile = join(lockDir, "pid");
   const deadline = Date.now() + 5_000;
   while (true) {
     try {
       mkdirSync(lockDir);
+      // Write PID so a potential thief can verify the holder is actually dead
+      // before stealing. Best-effort: lock is still valid even if this fails.
+      try {
+        writeFileSync(lockPidFile, String(process.pid), "utf-8");
+      } catch { /* best effort */ }
       return () => {
         try {
-          rmdirSync(lockDir);
+          rmSync(lockDir, { recursive: true, force: true });
         } catch {
           // Best effort.
         }
@@ -89,8 +112,31 @@ function acquireRegistryLock(): () => void {
       try {
         const ageMs = Date.now() - statSync(lockDir).mtimeMs;
         if (ageMs > LOCK_STALE_MS) {
-          rmSync(lockDir, { recursive: true, force: true });
-          continue;
+          // Before stealing, verify the holder process is actually dead.
+          // On Windows, mtime is not reliably updated, so age alone is not
+          // sufficient — a live holder with a GC pause could look stale.
+          let holderDead = true;
+          try {
+            const pidStr = readFileSync(lockPidFile, "utf-8").trim();
+            const holderPid = Number(pidStr);
+            if (!isNaN(holderPid) && holderPid > 0 && holderPid !== process.pid) {
+              try {
+                process.kill(holderPid, 0);
+                // Signal delivered → process is alive; do not steal.
+                holderDead = false;
+              } catch (killErr: unknown) {
+                const killCode = (killErr as NodeJS.ErrnoException).code;
+                // ESRCH: process gone → steal.
+                // EPERM: different-user process reused the PID → not our daemon → steal.
+                holderDead = killCode === "ESRCH" || killCode === "EPERM";
+              }
+            }
+          } catch { /* no pid file or unreadable — fall back to age-based decision */ }
+
+          if (holderDead) {
+            rmSync(lockDir, { recursive: true, force: true });
+            continue;
+          }
         }
       } catch {
         // Retry lock acquisition if the lock disappeared between calls.

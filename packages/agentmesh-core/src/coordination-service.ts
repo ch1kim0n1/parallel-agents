@@ -942,5 +942,7 @@ export class CoordinationService {
    */
   cleanup(): void {
     this.taskManager.close();
+    this.lockManager.close();
+    this.costTracker.close();
   }
 }

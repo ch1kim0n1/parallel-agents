@@ -135,10 +135,15 @@ describe("DirectoryBrowser", () => {
     const row = (await screen.findByText("alpha")).closest("button");
     expect(row).not.toBeNull();
 
-    fireEvent.keyDown(row!, { key: "ArrowDown" });
+    // Fire on the browser container (ancestor of rows) — document-level keyboard
+    // nav requires the event to come from inside or above contentRef, not from a
+    // row button itself (which would require contentRef.current to be non-null at
+    // dispatch time, which jsdom doesn't guarantee during async renders).
+    const browserDiv = row!.closest(".add-project-browser")!;
+    fireEvent.keyDown(browserDiv, { key: "ArrowDown" });
     await waitFor(() => expect(row?.className).toContain("is-selected"));
 
-    fireEvent.keyDown(row!, { key: "Enter" });
+    fireEvent.keyDown(browserDiv, { key: "Enter" });
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith("/api/filesystem/browse?path=~%2Falpha"),

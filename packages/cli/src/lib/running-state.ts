@@ -52,8 +52,23 @@ function isProcessAlive(pid: number): boolean {
     return true;
   } catch (error: unknown) {
     if ((error as { code?: string }).code === "EPERM") {
-      return true;
+      return true; // process exists but belongs to another user; treat as alive for lock checks
     }
+    return false;
+  }
+}
+
+/**
+ * Check whether the AO daemon recorded in running.json is still alive.
+ * Unlike generic isProcessAlive(), EPERM is treated as dead: the AO daemon
+ * always runs as the same user, so EPERM indicates the PID was reused by a
+ * different-user process after a crash.
+ */
+function isDaemonAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
     return false;
   }
 }
@@ -274,7 +289,7 @@ export async function getRunning(): Promise<RunningState | null> {
     const state = readState();
     if (!state) return null;
 
-    if (!isProcessAlive(state.pid)) {
+    if (!isDaemonAlive(state.pid)) {
       // Stale entry — process is dead, clean up
       writeState(null);
       recordActivityEvent({

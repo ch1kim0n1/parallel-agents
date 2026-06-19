@@ -610,6 +610,10 @@ export function createLifecycleManager(deps: LifecycleManagerDeps): LifecycleMan
 
       const pluginRepos = [...(reposByPlugin.get(pluginKey) ?? [])];
       const batchStartTime = Date.now();
+      // Collect unchanged-repo markers locally. Only merged into prListUnchangedRepos
+      // after a successful batch — if the batch throws, these are discarded so detectPR
+      // re-checks those repos next poll and does not miss PRs opened during the failure.
+      const pluginUnchangedRepos: string[] = [];
       try {
         const enrichmentData = await scm.enrichSessionsPRBatch(
           pluginPRs,
@@ -663,19 +667,25 @@ export function createLifecycleManager(deps: LifecycleManagerDeps): LifecycleMan
             },
             reportPRListUnchangedRepos(repos) {
               for (const repo of repos) {
-                prListUnchangedRepos.add(repo);
+                pluginUnchangedRepos.push(repo);
               }
             },
           },
           pluginRepos,
         );
 
+        // Batch succeeded — commit unchanged-repo markers and enrichment cache.
+        for (const repo of pluginUnchangedRepos) {
+          prListUnchangedRepos.add(repo);
+        }
         // Merge into cache
         for (const [key, data] of enrichmentData) {
           prEnrichmentCache.set(key, data);
         }
       } catch (err) {
-        // Batch fetch failed - individual calls will still work
+        // Batch fetch failed - individual calls will still work.
+        // pluginUnchangedRepos is intentionally discarded: do not carry stale
+        // 304-markers into prListUnchangedRepos after a failure.
         const errorMsg = err instanceof Error ? err.message : String(err);
         const batchCorrelationId = createCorrelationId("batch-enrichment");
         observer?.recordOperation?.({

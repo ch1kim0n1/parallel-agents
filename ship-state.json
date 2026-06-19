@@ -1,0 +1,159 @@
+{
+  "last_run": "2026-06-19T01:50:00Z",
+  "verdict": "READY FOR DEMO",
+  "release_target": "Entire product — AgentMesh CLI + Web Dashboard",
+  "ship_decision_applies_to": "All packages; live instance tested on Windows",
+  "surface_map": [
+    {
+      "surface": "Web Dashboard",
+      "type": "Web App",
+      "path": "packages/web",
+      "user_facing": true,
+      "release_critical": "Yes",
+      "changed": true,
+      "audit_depth": "Targeted",
+      "blast_radius_upgrade": "7 files changed from last session bug fixes"
+    },
+    {
+      "surface": "CLI (ao)",
+      "type": "CLI",
+      "path": "packages/cli, packages/ao",
+      "user_facing": true,
+      "release_critical": "Yes",
+      "changed": true,
+      "audit_depth": "Targeted",
+      "blast_radius_upgrade": null
+    },
+    {
+      "surface": "AgentMesh Core",
+      "type": "API",
+      "path": "packages/agentmesh-core",
+      "user_facing": false,
+      "release_critical": "Yes",
+      "changed": true,
+      "audit_depth": "Targeted",
+      "blast_radius_upgrade": null
+    },
+    {
+      "surface": "Core",
+      "type": "API",
+      "path": "packages/core",
+      "user_facing": false,
+      "release_critical": "Yes",
+      "changed": true,
+      "audit_depth": "Targeted",
+      "blast_radius_upgrade": null
+    }
+  ],
+  "environment_matrix": {
+    "local": true,
+    "test_ci": true,
+    "staging": false,
+    "production_smoke": false,
+    "staging_gap_rule_triggered": false
+  },
+  "issues_filed": [],
+  "fixes_applied": [
+    {
+      "description": "DirectoryBrowser keyboard nav test fired on row not container",
+      "file": "packages/web/src/components/__tests__/DirectoryBrowser.test.tsx",
+      "verified": true
+    },
+    {
+      "description": "agentmesh-core SQLite Windows crash: missing cleanup() in afterEach",
+      "file": "packages/agentmesh-core/__tests__/coordination-service.test.ts",
+      "verified": true
+    },
+    {
+      "description": "coordination-service.ts cleanup() only closed taskManager — lockManager and costTracker left open",
+      "file": "packages/agentmesh-core/src/coordination-service.ts",
+      "verified": true
+    },
+    {
+      "description": "2.9 Atomics.wait CPU spin: wrap in try-catch, bounded busy-wait fallback",
+      "file": "packages/core/src/daemon-children.ts",
+      "verified": true
+    },
+    {
+      "description": "2.8 Windows file lock stolen from live holder: write PID to lock dir, verify before stealing",
+      "file": "packages/core/src/daemon-children.ts",
+      "verified": true
+    },
+    {
+      "description": "2.6 EPERM false positive: isDaemonAlive() treats EPERM as dead for running.json PID check",
+      "file": "packages/cli/src/lib/running-state.ts",
+      "verified": true
+    },
+    {
+      "description": "2.3 PR cache not reset on batch fail: scope unchanged-repo markers per-plugin, commit only on success",
+      "file": "packages/core/src/lifecycle-manager.ts",
+      "verified": true
+    },
+    {
+      "description": "running-state test updated: EPERM on daemon PID now correctly prunes stale entry",
+      "file": "packages/cli/__tests__/lib/running-state.test.ts",
+      "verified": true
+    }
+  ],
+  "claims_tested": [
+    {
+      "claim": "Dashboard at http://localhost:3000",
+      "result": "pass"
+    },
+    {
+      "claim": "AgentMesh board at /agentmesh",
+      "result": "pass"
+    },
+    {
+      "claim": "Create task → moves to Building",
+      "result": "pass"
+    },
+    {
+      "claim": "pnpm build / typecheck / test all pass",
+      "result": "pass"
+    },
+    {
+      "claim": "CLI startup under 2 seconds",
+      "result": "pass"
+    },
+    {
+      "claim": "Custom 404 page (not framework default)",
+      "result": "pass"
+    },
+    {
+      "claim": "ao doctor: healthy",
+      "result": "pass"
+    },
+    {
+      "claim": "No health check endpoint",
+      "result": "fail"
+    }
+  ],
+  "critical_path": [
+    "Rotate/invalidate OpenClaw token committed at 0393ab70 on 2026-02-15",
+    "Add /api/health endpoint returning {status:'ok', version:'0.9.2'}",
+    "Verify mobile responsiveness of /agentmesh page in a real browser",
+    "Commit the 7 uncommitted bug-fix files to main"
+  ],
+  "sections_audited": [
+    "Pre-flight (state diff)",
+    "Git diff analysis",
+    "Test suite execution",
+    "Build + typecheck verification",
+    "Live ao start on Windows",
+    "Route probing (/, /agentmesh, /api/*)",
+    "404 page quality",
+    "CLI performance",
+    "Task creation + start API flow",
+    "XSS input handling",
+    "Bundle size check",
+    "Security (secrets, vulnerabilities)"
+  ],
+  "sections_skipped": [
+    "Mobile audit (requires browser with devtools)",
+    "Cold clone (no clean environment)",
+    "LLM-as-first-user (README unchanged from Run 1)",
+    "Unchanged sections (docs, language, consistency — no changes since Run 1)"
+  ],
+  "diff_scope": "targeted"
+}

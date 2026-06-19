@@ -82,7 +82,7 @@ describe("CoordinationService", () => {
   });
 
   afterEach(async () => {
-    // Cleanup would happen here in real tests
+    coordinationService.cleanup();
   });
 
   describe("Task Management", () => {
