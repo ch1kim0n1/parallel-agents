@@ -63,7 +63,7 @@ The product is **dark-only mission control**. The dark theme is authoritative.
 | `--term`        | `#0c0d10`                               | xterm background (terminal-themes.ts)                                    |
 | `--line`        | `rgba(255,255,255,0.06)`                | `--color-border-subtle` / `-default`                                     |
 | `--line-2`      | `rgba(255,255,255,0.10)`                | `--color-border-strong`                                                  |
-| `--t1 … --t4`   | `#f4f5f7` `#9ba1aa` `#646a73` `#444951` | `--color-text-primary/secondary/tertiary/muted`                          |
+| `--t1 … --t4`   | `#f4f5f7` `#9ba1aa` `#787e89` `#444951` | `--color-text-primary/secondary/tertiary/muted`                          |
 
 These literals live at the top of the `.dark` block in
 `packages/web/src/app/globals.css`; the existing `--color-*` semantic tokens
@@ -164,6 +164,7 @@ disagrees with the column it sits in.
 - **Reduced motion:** `@media (prefers-reduced-motion: reduce)` disables animations/transitions. Non-negotiable.
 - **Color independence:** never encode meaning with color alone. Status badges always pair a colored dot with a text label.
 - **Contrast:** body text ≥ 4.5:1; UI/borders/icons ≥ 3:1. The text ramp `--t1…--t3` is for primary→labels on the `--bg`/`--card` surfaces; `--t4` is for faint/disabled only.
+- **Text ramp AA boundary:** `--t3` (`#787e89`) is the minimum text ramp value usable for labels — it passes AA (4.5:1) against `--bg` and `--card` (4.95:1 / 4.51:1). `--t4` (`#444951`) is faint/disabled only and does not pass AA.
 - **Keyboard nav:** all interactive elements reachable via Tab; Escape closes popovers; logical order.
 - **ARIA labels** on all icon-only buttons.
 

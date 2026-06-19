@@ -16,9 +16,10 @@ import type {
   AgentStatus,
   AgentSessionInfo,
 } from "@aoagents/agentmesh-core";
-import type { SessionManager, SessionId } from "@aoagents/ao-core";
+import { type SessionManager, type SessionId, getActivityLogPath } from "@aoagents/ao-core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readFile } from "node:fs/promises";
 
 const execFileAsync = promisify(execFile);
 
@@ -92,19 +93,17 @@ export class OpenCodeAdapter implements AgentMeshAgentAdapter {
    * Get output from an OpenCode session
    */
   async getOutput(session: AgentSession, options?: OutputOptions): Promise<AgentOutput> {
-    const activityLogPath = this.getActivityLogPath(session.aoSessionId);
-
     try {
-      const { stdout } = await execFileAsync("tail", [
-        "-n",
-        options?.lines?.toString() || "50",
-        activityLogPath,
-      ]);
+      const activityLogPath = await this.getActivityLogPath(session.aoSessionId);
+      const content = await readFile(activityLogPath, "utf-8");
+      const lines = content.split("\n");
+      const linesToRead = options?.lines ?? 50;
+      const tailLines = lines.slice(-linesToRead).join("\n");
 
       return {
-        text: stdout,
+        text: tailLines,
         capturedAt: new Date(),
-        linesRead: stdout.split("\n").length,
+        linesRead: tailLines.split("\n").length,
       };
     } catch {
       return {
@@ -262,8 +261,12 @@ ${task}`
   /**
    * Get the activity log path for a session
    */
-  private getActivityLogPath(sessionId: SessionId): string {
-    return `/tmp/opencode-activity-${sessionId}.log`;
+  private async getActivityLogPath(sessionId: SessionId): Promise<string> {
+    const session = await this.sessionManager.get(sessionId);
+    if (!session || !session.workspacePath) {
+      throw new Error(`Session ${sessionId} not found or has no workspace path`);
+    }
+    return getActivityLogPath(session.workspacePath);
   }
 }
 

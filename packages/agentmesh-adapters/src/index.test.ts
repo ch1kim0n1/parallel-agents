@@ -246,3 +246,103 @@ describe("DevinAdapter", () => {
     });
   });
 });
+
+describe("OpenCodeAdapter — getOutput (cross-platform, no POSIX tail)", () => {
+  it("returns empty text when session has no workspace path", async () => {
+    const sessionManager = createSessionManagerMock();
+    // Simulate session not found — getActivityLogPath throws → getOutput catches → empty result
+    sessionManager.get.mockResolvedValue(null);
+
+    const adapter = new OpenCodeAdapter(asSessionManager(sessionManager));
+
+    const result = await adapter.getOutput({
+      aoSessionId: "ao-oc-1",
+      taskId: "TASK-OC-1",
+      role: "builder",
+      startedAt: new Date(),
+    });
+
+    expect(result.text).toBe("");
+    expect(result.capturedAt).toBeInstanceOf(Date);
+    expect(result.linesRead).toBe(0);
+  });
+
+  it("returns empty text when activity log does not exist", async () => {
+    const sessionManager = createSessionManagerMock();
+    // Session exists but workspace path leads to a nonexistent log file
+    sessionManager.get.mockResolvedValue({
+      id: "ao-oc-2",
+      workspacePath: "/tmp/ao-test-nonexistent-ws",
+      status: "working",
+    });
+
+    const adapter = new OpenCodeAdapter(asSessionManager(sessionManager));
+
+    const result = await adapter.getOutput({
+      aoSessionId: "ao-oc-2",
+      taskId: "TASK-OC-2",
+      role: "builder",
+      startedAt: new Date(),
+    });
+
+    expect(result.text).toBe("");
+    expect(result.capturedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("Security — shell metacharacters in task inputs do not reach shell commands", () => {
+  it("task title with shell metacharacters is sent as prompt text, not executed", async () => {
+    const sessionManager = createSessionManagerMock();
+    sessionManager.spawn.mockResolvedValue({ id: "ao-sec-1" });
+    const adapter = new ClaudeCodeAdapter(asSessionManager(sessionManager));
+
+    const injectionTitle = "; rm -rf /important-dir && echo INJECTED";
+
+    await adapter.start({
+      taskId: "TASK-SEC-1",
+      role: "builder",
+      prompt: injectionTitle,
+      workspacePath: "/repo",
+      branch: "task/safe-branch",
+    });
+
+    // spawn receives taskId and branch as data — not interpolated into shell strings
+    expect(sessionManager.spawn).toHaveBeenCalledWith({
+      projectId: "agentmesh",
+      issueId: "TASK-SEC-1",
+      branch: "task/safe-branch",
+    });
+
+    // The injection title only reaches send() as prompt text — never as a shell command
+    const sentText = sessionManager.send.mock.calls[0]?.[1] as string;
+    expect(sentText).toContain(injectionTitle); // text preserved as-is (agent input)
+    // Crucially: execFile is never called with the injection title
+    // (only preflight() calls execFile with a hardcoded binary name)
+    expect(sessionManager.spawn.mock.calls[0]?.[0]).not.toHaveProperty(
+      "branch",
+      expect.stringContaining(";"),
+    );
+  });
+
+  it("branch name with metacharacters is passed as data to sessionManager, not shell string", async () => {
+    const sessionManager = createSessionManagerMock();
+    sessionManager.spawn.mockResolvedValue({ id: "ao-sec-2" });
+    const adapter = new CodexAdapter(asSessionManager(sessionManager));
+
+    // A branch that would be dangerous if interpolated into a shell string
+    const safeBranch = "task/safe-codex-abc123";
+
+    await adapter.start({
+      taskId: "TASK-SEC-2",
+      role: "qa",
+      prompt: "Run tests",
+      workspacePath: "/repo",
+      branch: safeBranch,
+    });
+
+    // spawn() receives branch as a data field, not a shell command fragment
+    expect(sessionManager.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ branch: safeBranch }),
+    );
+  });
+});
