@@ -1685,7 +1685,6 @@ html.light .xterm .xterm-viewport:hover::-webkit-scrollbar-thumb:active {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto;
   gap: 10px;
-  border-left: 3px solid var(--color-border-default);
   border-bottom: 1px solid var(--color-border-subtle);
   padding: 12px;
 }
@@ -1702,32 +1701,12 @@ html.light .xterm .xterm-viewport:hover::-webkit-scrollbar-thumb:active {
   opacity: 0.72;
 }
 
-.dashboard-notification-item--urgent {
-  border-left-color: var(--color-status-error);
-}
-
 .dashboard-notification-item--urgent.dashboard-notification-item--unread {
   background: color-mix(in srgb, var(--color-status-error) 8%, transparent);
 }
 
-.dashboard-notification-item--action {
-  border-left-color: var(--color-status-attention);
-}
-
 .dashboard-notification-item--action.dashboard-notification-item--unread {
   background: color-mix(in srgb, var(--color-status-attention) 9%, transparent);
-}
-
-.dashboard-notification-item--warning {
-  border-left-color: var(--color-accent-amber);
-}
-
-.dashboard-notification-item--info {
-  border-left-color: var(--color-accent);
-}
-
-.dashboard-notification-item--success {
-  border-left-color: var(--color-accent-green);
 }
 
 .dashboard-notification-item--success.dashboard-notification-item--unread {
