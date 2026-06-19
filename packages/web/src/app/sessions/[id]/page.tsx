@@ -170,7 +170,7 @@ function SidebarPlaceholder({ message }: { message: string }) {
   return (
     <div className="project-sidebar h-full">
       <div className="space-y-3 px-3 py-4">
-        <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+        <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
           Projects
         </div>
         <div className="space-y-2">

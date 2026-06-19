@@ -201,20 +201,19 @@ export default function TaskBoard() {
                       onClick={() => setSelectedTask(task)}
                       className="bg-[var(--color-bg-surface)] p-3 rounded shadow-sm hover:shadow-md cursor-pointer transition-shadow border border-[var(--color-border-subtle)]"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-xs font-mono text-[var(--color-text-tertiary)]">
-                          {task.id}
-                        </span>
+                      <div className="flex items-start justify-between mb-1">
+                        <h4 className="font-medium text-sm text-[var(--color-text-primary)] leading-snug">
+                          {task.title}
+                        </h4>
                         <span
-                          className={`text-xs ${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? "text-[var(--color-text-tertiary)]"}`}
+                          className={`text-xs ml-2 flex-shrink-0 ${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? "text-[var(--color-text-tertiary)]"}`}
                         >
                           {getPriorityIcon(task.priority)}
                         </span>
                       </div>
-
-                      <h4 className="font-medium text-sm mb-1 text-[var(--color-text-primary)]">
-                        {task.title}
-                      </h4>
+                      <span className="text-[10px] font-mono text-[var(--color-text-muted)] mb-2 block truncate">
+                        {task.id}
+                      </span>
                       <p className="text-xs text-[var(--color-text-secondary)] mb-2 line-clamp-2">
                         {task.description}
                       </p>

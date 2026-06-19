@@ -4487,7 +4487,7 @@ body:not(.is-resizing-x) .sidebar-wrapper {
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .project-sidebar__add-btn {
@@ -5978,7 +5978,7 @@ body:not(.is-resizing-x) .sidebar-wrapper {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-family: var(--font-mono);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .kanban-column__count {
@@ -6806,9 +6806,7 @@ body:not(.is-resizing-x) .sidebar-wrapper {
     position: fixed;
     inset: 0;
     z-index: calc(var(--z-overlay) - 1);
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.55);
   }
 
   /* -- Dashboard main -- */

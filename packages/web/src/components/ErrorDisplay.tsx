@@ -140,7 +140,7 @@ export function ErrorDisplay({
             <TerminalIcon accent={meta.accent} />
             <div className="min-w-0 flex-1">
               <div
-                className="mb-3 inline-flex items-center rounded-full border px-2.5 py-1 font-[var(--font-mono)] text-[10px] font-medium uppercase tracking-[0.22em]"
+                className="mb-3 inline-flex items-center rounded-full border px-2.5 py-1 font-[var(--font-mono)] text-[10px] font-medium uppercase tracking-[0.08em]"
                 style={{
                   color: meta.accent,
                   background: meta.bg,
