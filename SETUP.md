@@ -471,6 +471,32 @@ To add a custom tracker (Jira, Asana, etc.), create a plugin:
 
 See [Development Guide](./docs/DEVELOPMENT.md) for plugin development guidelines.
 
+## AgentMesh Coordination Layer
+
+AgentMesh includes an optional quality-gated task workflow that runs builder and QA agents in sequence. Enable it by adding `agentmesh:` to your `agent-orchestrator.yaml`:
+
+```yaml
+agentmesh:
+  enabled: true
+```
+
+Then restart:
+```bash
+ao stop && ao start
+```
+
+### Using the task board
+
+Open `http://localhost:3000/agentmesh` in your browser. You'll see a Kanban board with columns: **Created → Building → QA → Merged**.
+
+1. Click **Create Task** and fill in a title and description
+2. Leave the branch field blank — AgentMesh auto-generates a worker branch
+3. Click **Start** — the task moves to **Building** as a Claude Code agent begins work
+4. When the builder completes, a QA agent reviews the output
+5. If QA passes, the PR is ready to merge
+
+See [`docs/AGENTMESH.md`](docs/AGENTMESH.md) for the full reference including QA loop configuration and retry policies.
+
 ## Troubleshooting
 
 ### Run `ao doctor`

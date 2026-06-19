@@ -25,7 +25,7 @@ import {
   type OrchestratorConfig,
 } from "./types.js";
 import { generateSessionPrefix } from "./paths.js";
-import { getDefaultRuntime } from "./platform.js";
+import { getDefaultRuntime, isMac } from "./platform.js";
 import {
   getGlobalConfigPath,
   isCanonicalGlobalConfigPath,
@@ -319,7 +319,7 @@ const PowerConfigSchema = z
      * Uses `caffeinate -i -w <pid>` to hold an assertion.
      * Defaults to true on macOS, no-op on other platforms.
      */
-    preventIdleSleep: z.boolean().default(process.platform === "darwin"),
+    preventIdleSleep: z.boolean().default(isMac()),
   })
   .default({});
 

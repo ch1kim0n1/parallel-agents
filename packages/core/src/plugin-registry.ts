@@ -71,6 +71,9 @@ const BUILTIN_PLUGINS: Array<{ slot: PluginSlot; name: string; pkg: string }> = 
   { slot: "terminal", name: "web", pkg: "@aoagents/ao-plugin-terminal-web" },
 ];
 
+/** O(1) lookup set — keyed as "slot:name" to avoid collisions across slots */
+const BUILTIN_PLUGIN_KEYS = new Set(BUILTIN_PLUGINS.map((b) => makeKey(b.slot, b.name)));
+
 function matchesNotifierPlugin(
   pluginName: string,
   notifierId: string,
@@ -175,7 +178,7 @@ function prepareConfig(
   // may legitimately collide with a built-in (e.g. a forked "slack"), and the path field
   // here IS the loading path, not a stray user config value.
   const isBuiltin =
-    !isExternalLoad && BUILTIN_PLUGINS.some((b) => b.slot === slot && b.name === name);
+    !isExternalLoad && BUILTIN_PLUGIN_KEYS.has(makeKey(slot as import("./types.js").PluginSlot, name));
   if ((rawConfig.package || isBuiltin) && "path" in rawConfig) {
     const loadingMethod = rawConfig.package
       ? `npm package "${rawConfig.package}"`

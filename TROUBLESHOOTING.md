@@ -103,3 +103,10 @@ npx node-gyp rebuild
 ```bash
 ln -s /path/to/agent-orchestrator.yaml packages/web/agent-orchestrator.yaml
 ```
+
+## Still Need Help?
+
+If none of the above resolves your issue:
+
+- **Discord community** — Join [discord.gg/UZv7JjxbwG](https://discord.gg/UZv7JjxbwG) and post in `#support`
+- **GitHub Issues** — [Open an issue](https://github.com/ComposioHQ/agent-orchestrator/issues/new) with your `ao doctor` output and the error message

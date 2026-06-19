@@ -498,6 +498,7 @@ export function createLifecycleManager(deps: LifecycleManagerDeps): LifecycleMan
 
   const states = new Map<SessionId, SessionStatus>();
   const activityStateCache = new Map<string, ActivityState>(); // sessionId → last observed activity
+  const probeIndeterminateCounts = new Map<SessionId, number>(); // in-memory; resets on AO restart
   const reactionTrackers = new Map<string, ReactionTracker>(); // "sessionId:reactionKey"
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let polling = false; // re-entrancy guard
@@ -1065,6 +1066,9 @@ export function createLifecycleManager(deps: LifecycleManagerDeps): LifecycleMan
       session.lifecycle = lifecycle;
       session.status = decision.status;
       session.activitySignal = activitySignal;
+      // Deterministic result: clear the indeterminate counter so a future run of
+      // indeterminate probes starts fresh rather than carrying over stale counts.
+      probeIndeterminateCounts.delete(session.id);
       return {
         status: decision.status,
         evidence: decision.evidence,
@@ -1311,18 +1315,40 @@ export function createLifecycleManager(deps: LifecycleManagerDeps): LifecycleMan
     }
 
     if (processProbe.indeterminate) {
+      const INDETERMINATE_ESCALATION_THRESHOLD = 3;
+      const consecutiveIndeterminate = (probeIndeterminateCounts.get(session.id) ?? 0) + 1;
+
       recordActivityEvent({
         projectId: session.projectId,
         sessionId: session.id,
         source: "agent",
         kind: "agent.process_probe_failed",
         level: "warn",
-        summary: `agent.isProcessRunning indeterminate for ${session.id}`,
+        summary: `agent.isProcessRunning indeterminate for ${session.id} (${consecutiveIndeterminate}/${INDETERMINATE_ESCALATION_THRESHOLD})`,
         data: {
           agentName,
           reason: "probe_indeterminate",
+          consecutiveCount: consecutiveIndeterminate,
         },
       });
+
+      if (consecutiveIndeterminate >= INDETERMINATE_ESCALATION_THRESHOLD) {
+        // Too many consecutive indeterminate probes — escalate to detecting so the
+        // dashboard surfaces the broken probe to the user rather than looping silently.
+        probeIndeterminateCounts.delete(session.id);
+        const escalated = commit({
+          status: SESSION_STATUS.DETECTING,
+          evidence: "probe_failure_escalation",
+          detecting: {
+            attempts: currentDetectingAttempts + 1,
+            startedAt: currentDetectingStartedAt ?? nowIso,
+          },
+          sessionReason: "probe_failure",
+        });
+        return escalated;
+      }
+
+      probeIndeterminateCounts.set(session.id, consecutiveIndeterminate);
       return {
         status: session.status,
         evidence: session.metadata["lifecycleEvidence"] ?? "process_probe_indeterminate",

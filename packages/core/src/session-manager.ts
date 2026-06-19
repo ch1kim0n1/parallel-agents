@@ -101,6 +101,7 @@ import {
   setupPathWrapperWorkspace,
   PREFERRED_GH_PATH,
 } from "./agent-workspace-hooks.js";
+import { isWindows } from "./platform.js";
 
 const execFileAsync = promisify(execFile);
 const OPENCODE_DISCOVERY_TIMEOUT_MS = 10_000;
@@ -109,7 +110,7 @@ const INDEXED_PR_METADATA_KEY_REGEX = /^(prEnrichment|prReviewComments)_\d+$/;
 // On Windows, execFile cannot resolve .cmd shim extensions without invoking the shell.
 // windowsHide:true suppresses the conhost popup that the shell would otherwise flash.
 const EXEC_SHELL_OPTION =
-  process.platform === "win32" ? ({ shell: true, windowsHide: true } as const) : ({} as const);
+  isWindows() ? ({ shell: true, windowsHide: true } as const) : ({} as const);
 
 function errorIncludesSessionNotFound(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -399,7 +400,7 @@ export function createSessionManager(deps: SessionManagerDeps): OpenCodeSessionM
   function isPathInside(path: string, parentPath: string): boolean {
     const normalizedPath = normalizePath(path);
     const normalizedParent = normalizePath(parentPath);
-    const sep = process.platform === "win32" ? "\\" : "/";
+    const sep = isWindows() ? "\\" : "/";
     return (
       normalizedPath === normalizedParent || normalizedPath.startsWith(`${normalizedParent}${sep}`)
     );
@@ -801,7 +802,8 @@ export function createSessionManager(deps: SessionManagerDeps): OpenCodeSessionM
       const match = id.match(/-(\d+)$/);
       if (!match) return undefined;
       const parsed = Number.parseInt(match[1], 10);
-      return Number.isNaN(parsed) ? undefined : parsed;
+      if (Number.isNaN(parsed) || parsed < 0) return undefined;
+      return parsed;
     };
 
     return [...ids].sort((a, b) => {
