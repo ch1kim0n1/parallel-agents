@@ -48,7 +48,7 @@ const toneMeta: Record<ErrorTone, { accent: string; bg: string; border: string; 
 function TerminalIcon({ accent }: { accent: string }) {
   return (
     <div
-      className="flex h-14 w-14 items-center justify-center rounded-2xl border"
+      className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-2xl)] border"
       style={{
         background: `linear-gradient(180deg, color-mix(in srgb, ${accent} 16%, var(--color-bg-elevated)) 0%, var(--color-bg-surface) 100%)`,
         borderColor: `color-mix(in srgb, ${accent} 18%, var(--color-border-default))`,
@@ -169,7 +169,7 @@ export function ErrorDisplay({
 
           {hasDetails ? (
             <details
-              className="rounded-2xl border"
+              className="rounded-[var(--radius-2xl)] border"
               style={{
                 background: "color-mix(in srgb, var(--color-bg-elevated) 84%, transparent)",
                 borderColor: "var(--color-border-subtle)",

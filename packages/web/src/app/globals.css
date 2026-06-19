@@ -363,6 +363,7 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+  --radius-2xl: 20px;
 
   /* ── Transitions ──────────────────────────────────────────────────── */
   --transition-quick: 0.1s;
@@ -582,7 +583,7 @@ html.light .xterm .xterm-viewport:hover::-webkit-scrollbar-thumb:active {
 .session-ended-summary__panel {
   width: min(760px, 100%);
   border: 1px solid color-mix(in srgb, var(--color-border-default) 88%, transparent);
-  border-radius: 22px;
+  border-radius: var(--radius-2xl);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--color-bg-elevated) 92%, transparent),

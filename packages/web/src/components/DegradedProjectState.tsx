@@ -23,7 +23,7 @@ export function DegradedProjectState({
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-canvas)] px-6 py-10 text-[var(--color-text-primary)]">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-8 shadow-sm">
+      <div className="mx-auto max-w-3xl rounded-[var(--radius-2xl)] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-8 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="mt-1 rounded-full bg-[var(--color-tint-yellow)] p-2 text-[var(--color-status-attention)]">
             <svg
