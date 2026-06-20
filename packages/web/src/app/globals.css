@@ -2494,6 +2494,52 @@ body:not(.is-resizing-x) .sidebar-wrapper {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
+/* ── Breathe phase stagger — desync working dots (issue #41) ───────────
+   The breathe cycle is 2.4s. With no offset, every working dot pulses in
+   unison → strobe/alarm instead of an organic heartbeat. Step 10 offsets
+   evenly across one cycle (2400ms / 10 = 240ms) keyed off the containing
+   card/row, mirroring the kanban-card-enter nth-child stagger above. */
+.kanban-column-body .session-card:nth-child(1) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(1) .status-badge__dot {
+  animation-delay: 0ms;
+}
+.kanban-column-body .session-card:nth-child(2) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(2) .status-badge__dot {
+  animation-delay: 240ms;
+}
+.kanban-column-body .session-card:nth-child(3) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(3) .status-badge__dot {
+  animation-delay: 480ms;
+}
+.kanban-column-body .session-card:nth-child(4) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(4) .status-badge__dot {
+  animation-delay: 720ms;
+}
+.kanban-column-body .session-card:nth-child(5) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(5) .status-badge__dot {
+  animation-delay: 960ms;
+}
+.kanban-column-body .session-card:nth-child(6) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(6) .status-badge__dot {
+  animation-delay: 1200ms;
+}
+.kanban-column-body .session-card:nth-child(7) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(7) .status-badge__dot {
+  animation-delay: 1440ms;
+}
+.kanban-column-body .session-card:nth-child(8) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(8) .status-badge__dot {
+  animation-delay: 1680ms;
+}
+.kanban-column-body .session-card:nth-child(9) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(9) .status-badge__dot {
+  animation-delay: 1920ms;
+}
+.kanban-column-body .session-card:nth-child(10) .status-badge__dot,
+.project-sidebar__sess-row:nth-child(10) .status-badge__dot {
+  animation-delay: 2160ms;
+}
+
 .status-badge[data-tone="working"] {
   --status-tone: var(--color-status-working);
 }
