@@ -296,7 +296,17 @@ export function createSinglePortServer(config: SinglePortConfig): SinglePortServ
   return {
     server,
     listen() {
-      return new Promise<void>((resolve) => server.listen(port, () => resolve()));
+      // Default to loopback so the dashboard is not exposed on the LAN/public
+      // interface without auth. AO_BIND_HOST lets advanced users opt in.
+      // Bind the literal 127.0.0.1 (not "localhost") to avoid the IPv6
+      // localhost stall on Windows.
+      const host = process.env.AO_BIND_HOST || "127.0.0.1";
+      if (host !== "127.0.0.1" && host !== "::1") {
+        console.warn(
+          `[single-port] AO_BIND_HOST=${host} exposes the dashboard on a non-loopback interface with NO authentication. You are responsible for securing network access.`,
+        );
+      }
+      return new Promise<void>((resolve) => server.listen(port, host, () => resolve()));
     },
     shutdown() {
       return new Promise<void>((resolve) => {

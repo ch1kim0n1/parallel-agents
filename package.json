@@ -43,7 +43,9 @@
     "overrides": {
       "axios": "^1.15.0",
       "axios>follow-redirects": "^1.16.0",
-      "external-editor>tmp": "0.2.4"
+      "external-editor>tmp": "0.2.4",
+      "ws": "^8.21.0",
+      "postcss": "^8.4.49"
     }
   }
 }

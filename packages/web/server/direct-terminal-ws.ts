@@ -115,7 +115,18 @@ if (isMainModule) {
 
   const { server, shutdown } = createDirectTerminalServer(TMUX);
 
-  server.listen(PORT, () => {
+  // Default to loopback so the terminal WS server is not exposed on the
+  // LAN/public interface without auth. AO_BIND_HOST lets advanced users opt
+  // in. Bind the literal 127.0.0.1 (not "localhost") to avoid the IPv6
+  // localhost stall on Windows.
+  const HOST = process.env.AO_BIND_HOST || "127.0.0.1";
+  if (HOST !== "127.0.0.1" && HOST !== "::1") {
+    console.warn(
+      `[DirectTerminal] AO_BIND_HOST=${HOST} exposes the dashboard on a non-loopback interface with NO authentication. You are responsible for securing network access.`,
+    );
+  }
+
+  server.listen(PORT, HOST, () => {
     console.log(`[DirectTerminal] WebSocket server listening on port ${PORT}`);
   });
 
