@@ -1,0 +1,143 @@
+# Agent Orchestrator — Production Configuration Template
+#
+# Copy to agent-orchestrator.yaml (or a side-by-side prod config) and customize.
+# This template differs from agent-orchestrator.yaml.example in ways that matter
+# for production deployments: quieter logs, longer readiness thresholds, no
+# idle-sleep prevention (servers don't sleep), and webhook URLs pointing at the
+# production SCM endpoint.
+#
+# Key dev-vs-prod differences (see issue #79):
+#   - observability.logLevel: error   (dev: debug/info — too noisy for prod)
+#   - observability.stderr:   true    (dev: false — prod ships logs to stderr
+#                                      so container/PM2 capture works)
+#   - readyThresholdMs:       600000  (dev: 300000 / 5min — prod agents work
+#                                      on larger repos, give 10min)
+#   - power.preventIdleSleep: false   (dev: true on macOS — servers don't sleep)
+#   - lifecycle.autoCleanupOnMerge: true  (same as dev — never retain stale
+#                                          merged worktrees in prod)
+#
+# Settings NOT yet configurable (filed as follow-ups in #79):
+#   - lifecycle.pollingIntervalMs — currently hardcoded; prod should use 30s
+#     not 5s to reduce load. Tracked separately.
+#   - lifecycle.shutdownTimeoutMs — currently hardcoded 10s. Tracked separately.
+#   - AO_ENV / `ao start --env production` — config profile selection by env
+#     is a separate feature; for now, point `ao start` at this file via
+#     AO_CONFIG_PATH=agent-orchestrator.prod.yaml.
+
+$schema: https://raw.githubusercontent.com/ComposioHQ/agent-orchestrator/main/schema/config.schema.json
+
+# Web dashboard port — bind to 0.0.0.0 in containers, or 127.0.0.1 behind a
+# reverse proxy. The CLI binds to localhost by default for security; override
+# only if you have auth + TLS in front.
+port: 3000
+
+# Terminal server ports — override when running multiple dashboards.
+# terminalPort: 14800
+# directTerminalPort: 14801
+
+# Production readiness — agents working on large monorepos may need >5min to
+# reach a working state. 10min is the recommended prod default.
+readyThresholdMs: 600000
+
+# Power management — disable on servers (no-op anyway on Linux, but explicit).
+power:
+  preventIdleSleep: false
+
+# Observability — production should log only warnings/errors to stderr so
+# container log drivers (docker logs, journald, CloudWatch) capture them
+# without being flooded with info/debug noise.
+observability:
+  logLevel: error
+  stderr: true
+
+# Lifecycle — same defaults as dev. autoCleanupOnMerge must stay true in prod
+# so merged worktrees don't accumulate and exhaust disk.
+lifecycle:
+  autoCleanupOnMerge: true
+  mergeCleanupIdleGraceMs: 300000
+
+# Default plugins — prod typically uses the same set as dev. Adjust agent/
+# workspace per your fleet policy.
+defaults:
+  agent: claude-code
+  workspace: worktree
+  notifiers: [desktop]    # Replace with slack/webhook in prod for visibility.
+
+# Projects — at minimum, specify repo and path. Point webhook paths at the
+# production dashboard URL (the SCM provider must be able to reach this host).
+projects:
+  my-app:
+    name: My App
+    repo: org/my-app
+    path: /opt/repos/my-app    # Absolute path in prod — no ~ expansion ambiguity.
+    defaultBranch: main
+    sessionPrefix: app
+
+    # SCM webhook acceleration — point path at the production dashboard's
+    # publicly reachable URL. secretEnvVar must be set in the dashboard's
+    # environment (never commit the secret itself).
+    scm:
+      plugin: github
+      webhook:
+        path: /api/webhooks/github
+        secretEnvVar: GITHUB_WEBHOOK_SECRET
+        signatureHeader: x-hub-signature-256
+        eventHeader: x-github-event
+        deliveryHeader: x-github-delivery
+        maxBodyBytes: 1048576
+
+    # Per-project env — scope per-project tokens. AO-internal vars
+    # (AO_SESSION, AO_PROJECT_ID, etc.) always take precedence.
+    # env:
+    #   GH_TOKEN: ghp_xxx    # Set via the dashboard's env, not in this file.
+
+    # postCreate: ["pnpm install --frozen-lockfile"]
+
+    # agentConfig:
+    #   permissions: default    # NEVER use 'permissionless' in prod.
+    #   model: claude-sonnet-4-5
+
+# Notification channels — prod should route to Slack/webhook, not desktop
+# (no one is sitting at the server console).
+# notifiers:
+#   slack:
+#     plugin: slack
+#     webhook: ${SLACK_WEBHOOK_URL}
+#     channel: "#agent-updates"
+#
+#   webhook:
+#     plugin: webhook
+#     url: https://my-prod-internal.example.com/ao-events
+#     token: ${AO_WEBHOOK_TOKEN}
+
+# Notification routing by priority — prod typically routes urgent/action to
+# Slack + webhook, warnings to Slack only, info to webhook for archival.
+# notificationRouting:
+#   urgent: [slack, webhook]
+#   action: [slack, webhook]
+#   warning: [slack]
+#   info: [webhook]
+
+# Reactions — auto-responses to events. Prod should keep auto-merge OFF unless
+# you have a strong review culture; auto-fix on CI failure is usually fine.
+# reactions:
+#   ci-failed:
+#     auto: true
+#     action: send-to-agent
+#     retries: 2
+#     escalateAfter: 2
+#
+#   changes-requested:
+#     auto: true
+#     action: send-to-agent
+#     escalateAfter: 30m
+#
+#   approved-and-green:
+#     auto: false              # Keep false in prod unless you trust auto-merge.
+#     action: notify
+#     priority: action
+#
+#   agent-stuck:
+#     threshold: 10m
+#     action: notify
+#     priority: urgent
