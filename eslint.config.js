@@ -57,6 +57,10 @@ export default tseslint.config(
       "no-debugger": "error",
       "no-duplicate-imports": "error",
       "no-template-curly-in-string": "off",
+      // Error handling: catch blocks must not be empty — at minimum a
+      // comment explaining why the error is intentionally swallowed (issue #68).
+      // This prevents future bare `} catch {}` from silently discarding errors.
+      "no-empty": ["error", { allowEmptyCatch: false }],
       "no-restricted-syntax": [
         "error",
         {
