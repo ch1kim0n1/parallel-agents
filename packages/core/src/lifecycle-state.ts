@@ -466,6 +466,7 @@ export function deriveLegacyStatus(lifecycle: CanonicalSessionLifecycle): Sessio
           return "cleanup";
         case "error_in_process":
         case "probe_failure":
+        case "agent_process_exited":
           return "errored";
         default:
           return "terminated";
