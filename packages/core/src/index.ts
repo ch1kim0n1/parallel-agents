@@ -207,6 +207,10 @@ export {
   resolveProjectIdForSessionId,
 } from "./utils.js";
 export {
+  assertValidSessionIdComponent,
+  SESSION_ID_COMPONENT_PATTERN,
+} from "./utils/session-id.js";
+export {
   getWebhookHeader,
   parseWebhookJsonObject,
   parseWebhookTimestamp,
