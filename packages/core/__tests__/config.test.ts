@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
-import { basename, join } from "node:path";
+import { mkdirSync, writeFileSync, rmSync, realpathSync, readFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { loadConfig, findConfigFile, validateConfig } from "../src/config.js";
 import { ConfigNotFoundError } from "../src/types.js";
 import { generateSessionPrefix } from "../src/paths.js";
@@ -326,6 +327,35 @@ projects:
       );
 
       expect(() => loadConfig(configPath)).toThrow(/Map keys must be unique|Duplicate project ID/);
+    });
+  });
+
+  // Issue #79: the production config template must parse cleanly through the
+  // same Zod schema as the dev template. This guards against the prod template
+  // drifting into an invalid state (e.g. a field renamed in the schema but
+  // not updated in the .prod.yaml.example).
+  describe("production config template (issue #79)", () => {
+    it("agent-orchestrator.prod.yaml.example parses and validates", () => {
+      const testFileDir = dirname(fileURLToPath(import.meta.url));
+      // __tests__/config.test.ts -> up three dirs to repo root
+      // (packages/core/__tests__ -> packages/core -> packages -> repo root)
+      const prodTemplatePath = join(testFileDir, "..", "..", "..", "agent-orchestrator.prod.yaml.example");
+      const raw = readFileSync(prodTemplatePath, "utf-8");
+      // The template has commented-out ${VAR} placeholders that would fail
+      // validation if uncommented, but the active sections must parse.
+      const config = loadConfig(prodTemplatePath);
+      expect(config.port).toBe(3000);
+      expect(config.readyThresholdMs).toBe(600_000);
+      expect(config.power?.preventIdleSleep).toBe(false);
+      expect(config.observability?.logLevel).toBe("error");
+      expect(config.observability?.stderr).toBe(true);
+      expect(config.lifecycle?.autoCleanupOnMerge).toBe(true);
+      expect(Object.keys(config.projects)).toContain("my-app");
+      expect(config.projects["my-app"]?.scm?.webhook?.secretEnvVar).toBe(
+        "GITHUB_WEBHOOK_SECRET",
+      );
+      // Suppress unused-var lint for raw — it's read above but TS may warn.
+      void raw;
     });
   });
 });
