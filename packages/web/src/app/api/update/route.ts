@@ -20,6 +20,40 @@ export const dynamic = "force-dynamic";
 
 const ACTIVE_STATUSES = new Set(["working", "idle", "needs_input", "stuck"]);
 
+/**
+ * Allowlist of env vars forwarded to the `ao update` subprocess.
+ *
+ * The update command runs an external installer (npm/pnpm/bun/git) which may
+ * itself execute third-party code (postinstall scripts). Passing the full
+ * `process.env` would forward every secret the dashboard happens to have —
+ * `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, DB passwords, webhook secrets — to that
+ * untrusted install tree. We instead forward only what `ao update` actually
+ * needs: PATH/HOME/SHELL/USER for tool lookup and config/cache resolution,
+ * TMPDIR for npm temp, XDG_CACHE_HOME for the version-check cache, PATHEXT
+ * for Windows `.cmd` shim resolution, and the AO_NON_INTERACTIVE_INSTALL gate.
+ *
+ * Issue #87.
+ */
+function buildUpdateSubprocessEnv(): Record<string, string> {
+  const env: Record<string, string> = {
+    PATH: process.env["PATH"] ?? "",
+    HOME: process.env["HOME"] ?? process.env["USERPROFILE"] ?? "",
+    TMPDIR: process.env["TMPDIR"] ?? process.env["TEMP"] ?? process.env["TMP"] ?? "",
+    AO_NON_INTERACTIVE_INSTALL: "1",
+  };
+  if (process.env["SHELL"]) env["SHELL"] = process.env["SHELL"];
+  if (process.env["USER"]) env["USER"] = process.env["USER"];
+  if (process.env["USERNAME"]) env["USERNAME"] = process.env["USERNAME"];
+  if (process.env["USERPROFILE"]) env["USERPROFILE"] = process.env["USERPROFILE"];
+  if (process.env["XDG_CACHE_HOME"]) env["XDG_CACHE_HOME"] = process.env["XDG_CACHE_HOME"];
+  // PATHEXT is required on Windows for `.cmd` shim resolution when spawning
+  // through a shell; without it `npm`/`pnpm`/`ao` lookups silently ENOENT.
+  if (process.env["PATHEXT"]) env["PATHEXT"] = process.env["PATHEXT"];
+  // SYSTEMROOT is needed by Node.js itself on Windows for stdio handling.
+  if (process.env["SYSTEMROOT"]) env["SYSTEMROOT"] = process.env["SYSTEMROOT"];
+  return env;
+}
+
 interface UpdateResponse {
   ok: boolean;
   message: string;
@@ -81,7 +115,7 @@ export async function POST(_req: NextRequest) {
       // makes isTTY() return false, the CLI falls into the "print the
       // command and exit" branch, and the dashboard's "Update" button is
       // effectively a no-op (banner returns 202, nothing installs).
-      env: { ...process.env, AO_NON_INTERACTIVE_INSTALL: "1" },
+      env: buildUpdateSubprocessEnv(),
     });
     child.on("error", () => {
       // Swallow async spawn errors (ENOENT etc.) so they don't become

@@ -288,4 +288,50 @@ describe("POST /api/update", () => {
     expect(body.ok).toBe(false);
     expect(body.message).toMatch(/disk full/);
   });
+
+  // Issue #87: the update subprocess runs an external installer (npm postinstall
+  // etc.) which may execute third-party code. It must NOT inherit dashboard
+  // secrets — only the allowlisted vars in buildUpdateSubprocessEnv().
+  it("does not forward ANTHROPIC_API_KEY / GITHUB_TOKEN / arbitrary secrets to the update subprocess", async () => {
+    process.env["ANTHROPIC_API_KEY"] = "sk-ant-test-DO-NOT-LEAK";
+    process.env["GITHUB_TOKEN"] = "ghp_test-DO-NOT-LEAK";
+    process.env["WEBHOOK_SECRET"] = "whsecret-test-DO-NOT-LEAK";
+    process.env["DB_PASSWORD"] = "hunter2";
+    try {
+      const res = await updatePOST(makeReq());
+      expect(res.status).toBe(202);
+      expect(mockSpawn).toHaveBeenCalledTimes(1);
+      const spawnArgs = mockSpawn.mock.calls[0]!;
+      const opts = spawnArgs[2] as { env: Record<string, string> };
+      // Allowlisted vars are present
+      expect(opts.env["AO_NON_INTERACTIVE_INSTALL"]).toBe("1");
+      expect(typeof opts.env["PATH"]).toBe("string");
+      // Secrets are NOT forwarded
+      expect(opts.env).not.toHaveProperty("ANTHROPIC_API_KEY");
+      expect(opts.env).not.toHaveProperty("GITHUB_TOKEN");
+      expect(opts.env).not.toHaveProperty("WEBHOOK_SECRET");
+      expect(opts.env).not.toHaveProperty("DB_PASSWORD");
+      // Belt-and-suspenders: serialized env contains no leaked value
+      const serialized = JSON.stringify(opts.env);
+      expect(serialized).not.toContain("DO-NOT-LEAK");
+      expect(serialized).not.toContain("hunter2");
+    } finally {
+      delete process.env["ANTHROPIC_API_KEY"];
+      delete process.env["GITHUB_TOKEN"];
+      delete process.env["WEBHOOK_SECRET"];
+      delete process.env["DB_PASSWORD"];
+    }
+  });
+
+  it("forwards XDG_CACHE_HOME when set (version-check cache lives there)", async () => {
+    process.env["XDG_CACHE_HOME"] = "/tmp/ao-test-cache";
+    try {
+      const res = await updatePOST(makeReq());
+      expect(res.status).toBe(202);
+      const opts = mockSpawn.mock.calls[0]![2] as { env: Record<string, string> };
+      expect(opts.env["XDG_CACHE_HOME"]).toBe("/tmp/ao-test-cache");
+    } finally {
+      delete process.env["XDG_CACHE_HOME"];
+    }
+  });
 });
