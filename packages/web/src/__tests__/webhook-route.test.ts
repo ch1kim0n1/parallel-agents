@@ -325,4 +325,47 @@ describe("POST /api/webhooks/[...slug] — activity events", () => {
     const kinds = recordActivityEvent.mock.calls.map(([e]) => (e as { kind: string }).kind);
     expect(kinds.filter((k) => k.startsWith("api.webhook_"))).toEqual([]);
   });
+
+  // Issue #84: regression test asserting that PII (emails, logins, names) and
+  // secrets embedded in webhook payloads never appear in any recorded activity
+  // event. The route already logs only metadata (slug, remoteAddr, projectIds,
+  // counts) — not the raw payload — and recordActivityEvent redacts token-
+  // shaped substrings. This test pins both invariants so a future refactor
+  // that accidentally interpolates payload fields into event data is caught.
+  it("does not leak PII or embedded secrets from webhook payload into activity events", async () => {
+    // Re-establish the default SCM mock — earlier tests in this suite may have
+    // left a `mockReturnValueOnce(undefined)` in the queue (clearAllMocks does
+    // not clear the once-queue). mockReset clears both the implementation and
+    // the queue, then mockReturnValue sets a persistent return.
+    vi.mocked(mockRegistry.get).mockReset();
+    vi.mocked(mockRegistry.get).mockReturnValue(mockSCM);
+    const piiEmail = "leaked-user@example.com";
+    const piiLogin = "leaked-actor";
+    const embeddedSecret = "sk-ant-leaked-1234567890abcdef";
+    const payload = JSON.stringify({
+      action: "synchronize",
+      number: 42,
+      // GitHub-style PII fields
+      pusher: { email: piiEmail, name: "Leaked Name" },
+      sender: { login: piiLogin, email: piiEmail },
+      // Secret accidentally committed in a commit message
+      commits: [{ message: `fix: rotate key ${embeddedSecret}` }],
+    });
+
+    const req = makeWebhookRequest({ body: payload });
+    const res = await webhookPOST(req);
+    expect(res.status).toBe(202);
+
+    // Every recorded event must be free of PII and embedded secrets.
+    for (const [event] of recordActivityEvent.mock.calls) {
+      const serialized = JSON.stringify(event);
+      expect(serialized).not.toContain(piiEmail);
+      expect(serialized).not.toContain(piiLogin);
+      expect(serialized).not.toContain("Leaked Name");
+      expect(serialized).not.toContain(embeddedSecret);
+      // The raw payload body must not be present anywhere.
+      expect(serialized).not.toContain("pusher");
+      expect(serialized).not.toContain("commits");
+    }
+  });
 });
