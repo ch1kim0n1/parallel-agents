@@ -17,6 +17,12 @@ paths = [
   ".next/",
   "coverage/",
   "pnpm-lock.yaml",
+  # Test fixtures use fake token-shaped strings to verify redaction logic.
+  # Real secrets never live in test files.
+  "__tests__/",
+  "\\.test\\.ts$",
+  "\\.test\\.tsx$",
+  "\\.integration\\.test\\.ts$",
 ]
 
 regexes = [

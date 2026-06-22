@@ -327,5 +327,64 @@ projects:
 
       expect(() => loadConfig(configPath)).toThrow(/Map keys must be unique|Duplicate project ID/);
     });
+
+    // Issue #97: YAML parse errors interpolate the offending source line.
+    // If a syntax error lands on a line containing a secret, the secret must
+    // be redacted in the ConfigReadError message rather than leaked into logs.
+    it("redacts secrets from YAML parse error messages (issue #97)", () => {
+      const configPath = join(testDir, "secret-config.yaml");
+      // The `: :` on the webhookSecret line triggers a YAML parse error whose
+      // message includes the offending source line — which contains the secret.
+      writeFileSync(
+        configPath,
+        [
+          "projects:",
+          "  myapp:",
+          "    repo: org/myapp",
+          `    path: ${testDir}`,
+          "    scm:",
+          "      plugin: github",
+          "      webhookSecret: sk-ant-proj-1234567890abcdef : :",
+          "",
+        ].join("\n"),
+      );
+
+      try {
+        loadConfig(configPath);
+        expect.fail("loadConfig should have thrown ConfigReadError");
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+        const message = (err as Error).message;
+        expect(message).toMatch(/Failed to parse YAML/);
+        // The secret value must NOT appear in the error message.
+        expect(message).not.toContain("sk-ant-proj-1234567890abcdef");
+        // The redaction marker should be present.
+        expect(message).toContain("[redacted]");
+      }
+    });
+
+    it("redacts GitHub PATs from YAML parse error messages (issue #97)", () => {
+      const configPath = join(testDir, "pat-config.yaml");
+      const pat = `ghp_${"a".repeat(36)}`;
+      writeFileSync(
+        configPath,
+        [
+          "projects:",
+          "  myapp:",
+          `    path: ${testDir}`,
+          `    env: { GITHUB_TOKEN: ${pat} : : }`,
+          "",
+        ].join("\n"),
+      );
+
+      try {
+        loadConfig(configPath);
+        expect.fail("loadConfig should have thrown ConfigReadError");
+      } catch (err) {
+        const message = (err as Error).message;
+        expect(message).not.toContain(pat);
+        expect(message).toContain("[redacted]");
+      }
+    });
   });
 });

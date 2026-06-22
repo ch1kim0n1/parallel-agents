@@ -33,6 +33,7 @@ import {
 } from "./global-config.js";
 import { loadEffectiveProjectConfig } from "./project-resolver.js";
 import { recordActivityEvent } from "./activity-events.js";
+import { redactSecrets } from "./redact.js";
 
 /** Thrown when the config file cannot be read or parsed as YAML. */
 export class ConfigReadError extends Error {
@@ -56,11 +57,13 @@ function readAndParseConfig(configPath: string): unknown {
   try {
     raw = readFileSync(configPath, "utf-8");
   } catch (err) {
+    // fs errors don't carry file contents, but redact defensively in case the
+    // underlying OS message ever interpolates a path with credentials.
     throw new ConfigReadError(
       configPath,
-      `Failed to read config file at ${configPath}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+      `Failed to read config file at ${configPath}: ${redactSecrets(
+        err instanceof Error ? err.message : String(err),
+      )}`,
       { cause: err },
     );
   }
@@ -68,11 +71,15 @@ function readAndParseConfig(configPath: string): unknown {
   try {
     return parseYaml(raw);
   } catch (err) {
+    // YAML parse errors interpolate the offending source line — if a syntax
+    // error lands on a line containing a webhook secret or API key, that
+    // line would otherwise leak into the error message and any downstream
+    // log (including logFatal). Redact before constructing the message.
     throw new ConfigReadError(
       configPath,
-      `Failed to parse YAML in config file at ${configPath}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+      `Failed to parse YAML in config file at ${configPath}: ${redactSecrets(
+        err instanceof Error ? err.message : String(err),
+      )}`,
       { cause: err },
     );
   }

@@ -7,13 +7,18 @@
  * never throws — if it cannot write, it stays silent rather than masking the
  * original fatal error.
  *
- * NOTE: needs a barrel export added to `packages/core/src/index.ts`:
- *   export { logFatal } from "./error-log.js";
+ * Secret redaction (issue #97): fatal errors can carry secret values —
+ * YAML parse errors interpolate the offending source line (which may contain
+ * a webhook secret or API key), and thrown errors from plugin code may
+ * include config values in `.message` / `.stack`. Both `message` and `stack`
+ * are run through `redactSecrets` before being persisted so token-shaped
+ * substrings and URL credentials never land on disk.
  */
 
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { getEnvDefaults } from "./platform.js";
+import { redactSecrets } from "./redact.js";
 
 function errorLogPath(): string {
   return join(getEnvDefaults().HOME, ".agent-orchestrator", "error.log");
@@ -22,11 +27,12 @@ function errorLogPath(): string {
 /** Append a structured fatal-error record. Swallows its own I/O errors. */
 export function logFatal(scope: string, err: unknown): void {
   try {
+    const rawMessage = err instanceof Error ? err.message : String(err);
     const entry = {
       ts: new Date().toISOString(),
       scope,
-      message: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
+      message: redactSecrets(rawMessage),
+      stack: err instanceof Error ? redactSecrets(err.stack ?? "") : undefined,
     };
     const path = errorLogPath();
     mkdirSync(join(path, ".."), { recursive: true });

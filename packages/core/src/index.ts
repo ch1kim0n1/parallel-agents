@@ -22,6 +22,7 @@ export { isPortfolioEnabled } from "./feature-flags.js";
 
 // Crash/error logging
 export { logFatal } from "./error-log.js";
+export { redactSecrets } from "./redact.js";
 
 // Plugin registry
 export {
