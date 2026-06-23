@@ -168,6 +168,66 @@ That's it. The dashboard opens at `http://localhost:3000` and the AgentMesh orch
 If you are running this repository locally, see [Quick-start.md](Quick-start.md) for the
 repo-specific install, run, and smoke-test steps that were verified on Windows.
 
+### Container deployment
+
+<details>
+<summary><b>Run via Docker / Podman (issue #72)</b></summary>
+
+AgentMesh ships a multi-stage `Containerfile` (symlinked as `Dockerfile`) for containerized deployments. The container uses the `runtime-process` plugin (no tmux dependency) and runs the Next.js standalone server.
+
+**Quick start:**
+
+```bash
+# 1. Create config from example.
+cp agent-orchestrator.yaml.example agent-orchestrator.yaml
+# Edit agent-orchestrator.yaml: set repo, tracker, agent.
+
+# 2. Build + run with Docker Compose.
+docker compose up --build
+
+# 3. Open dashboard.
+open http://localhost:3000
+```
+
+**Or with Podman:**
+
+```bash
+podman build -t agentmesh .
+podman run -p 3000:3000 -v agentmesh-data:/data \
+  -v ./agent-orchestrator.yaml:/data/agent-orchestrator.yaml:ro \
+  agentmesh
+```
+
+**Production deployment (`docker-compose.prod.yml`):**
+
+- No port exposure (behind reverse proxy)
+- `AO_API_TOKEN` required (auth — issue #62)
+- Resource limits: 2GB RAM, 2 CPUs
+- Log rotation: 10MB max, 3 files
+- `restart: always`
+
+```bash
+# Create .env.prod with secrets.
+echo 'AO_API_TOKEN=...' > .env.prod
+echo 'GITHUB_TOKEN=ghp_...' >> .env.prod
+chmod 600 .env.prod
+
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+**Data persistence:** all session data, events, and config live in the `agentmesh-data` volume (`/data` inside container). The volume persists across container restarts.
+
+**Health check:** the container includes `HEALTHCHECK` probing `/api/health` every 30s. Use `docker ps` to see health status.
+
+**What's in the image:**
+- Node.js 20 (bookworm-slim)
+- git (worktree support)
+- curl (health check)
+- No tmux — `runtime-process` is the default in containers
+- Standalone Next.js server (minimal — only traced deps)
+
+</details>
+
 ### Add more projects
 
 ```bash

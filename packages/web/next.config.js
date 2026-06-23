@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const homeDir = os.homedir().replace(/\\/g, "/");
 const nextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  // Standalone output for containerized deployments (issue #72).
+  // Produces a minimal .next/standalone/ dir with only needed deps.
+  output: "standalone",
   transpilePackages: [
     "@aoagents/ao-plugin-agent-claude-code",
     "@aoagents/ao-plugin-agent-codex",

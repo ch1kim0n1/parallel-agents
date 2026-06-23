@@ -1,0 +1,56 @@
+# docker-compose.prod.yml — production deployment (issue #72).
+#
+# Differences from docker-compose.yml:
+#   - No port exposure (behind reverse proxy)
+#   - Env from Docker secrets / external sources
+#   - Stricter restart policy
+#   - Resource limits
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Secrets: use Docker secrets or .env file with restricted permissions.
+#   echo 'AO_API_TOKEN=...' > .env.prod
+#   chmod 600 .env.prod
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  agentmesh:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: ghcr.io/${IMAGE_REPO:-composiohq/agentmesh}:latest
+    # No port exposure — reverse proxy (nginx/traefik) handles TLS + routing.
+    # expose: ["3000"]  # uncomment if using a custom network
+    volumes:
+      - agentmesh-data:/data
+    environment:
+      - AO_HOME=/data
+      - HOME=/data
+      # All secrets from env — set via --env-file or orchestration platform.
+      - AO_API_TOKEN=${AO_API_TOKEN:?AO_API_TOKEN is required}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LINEAR_API_KEY=${LINEAR_API_KEY:-}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
+        reservations:
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  agentmesh-data:
