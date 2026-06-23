@@ -84,7 +84,7 @@
     "node-pty": "^1.1.0"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^15.1.0",
+    "@next/bundle-analyzer": "^16.2.9",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.1.0",
