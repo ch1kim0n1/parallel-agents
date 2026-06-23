@@ -50,6 +50,57 @@ AgentMesh manages fleets of AI coding agents working in parallel on your codebas
 > - **macOS / Linux:** [tmux](https://github.com/tmux/tmux/wiki/Installing) — install via `brew install tmux` or `sudo apt install tmux`.
 > - **Windows:** PowerShell 7+ recommended. tmux is **not** required — AgentMesh uses native ConPTY via the `runtime-process` plugin (the default on Windows). Set `AO_SHELL=bash` if you have Git Bash and prefer it.
 
+<details>
+<summary><b>Full prerequisites table (issue #89)</b></summary>
+
+### Required binaries
+
+| Binary | Min Version | Required? | Install | Notes |
+|--------|-------------|-----------|---------|-------|
+| `node` | 20.18.3 | Yes (all platforms) | [nodejs.org](https://nodejs.org) | LTS recommended |
+| `git` | 2.25 | Yes (all platforms) | [git-scm.com](https://git-scm.com) | Worktree support needs 2.25+ |
+| `pnpm` | 9.15.4 | Only for source install | `npm install -g pnpm` | Not needed for `npm install -g @aoagents/ao` |
+| `tmux` | 3.0 | macOS/Linux (default runtime) | `brew install tmux` / `sudo apt install tmux` | Not needed on Windows (ConPTY) |
+| `gh` | 2.0 | Yes (GitHub tracker/SCM) | [cli.github.com](https://cli.github.com) | Run `gh auth login` after install |
+
+### Agent CLIs (install the one(s) you use)
+
+| Agent | Binary | Install | Config name |
+|-------|--------|---------|-------------|
+| Claude Code | `claude` | `npm install -g @anthropic-ai/claude-code` | `agent: claude-code` (default) |
+| Codex | `codex` | `npm install -g @openai/codex` | `agent: codex` |
+| Aider | `aider` | `pip install aider-chat` | `agent: aider` |
+| OpenCode | `opencode` | [opencode.ai](https://opencode.ai) | `agent: opencode` |
+
+### API tokens (set as env vars)
+
+| Service | Env Var | Required when |
+|---------|---------|---------------|
+| GitHub | `GITHUB_TOKEN` | Using GitHub tracker/SCM (default) |
+| Linear | `LINEAR_API_KEY` | Using Linear tracker |
+| GitLab | `GITLAB_TOKEN` | Using GitLab tracker/SCM |
+| Anthropic | `ANTHROPIC_API_KEY` | Using Claude Code agent |
+| OpenAI | `OPENAI_API_KEY` | Using Codex agent |
+
+### Verify your install
+
+```bash
+ao validate      # preflight: checks config, env vars, binaries
+ao doctor        # deeper: install health, plugin resolution, notifier connectivity
+```
+
+### Common first-run errors
+
+| Error | Fix |
+|-------|-----|
+| `ConfigNotFoundError: no config found` | `cp agent-orchestrator.yaml.example agent-orchestrator.yaml` |
+| `tmux: command not found` | Install tmux (see table above) or set `defaults.runtime: process` |
+| `gh: command not found` | Install GitHub CLI + run `gh auth login` |
+| `GITHUB_TOKEN not set` | `export GITHUB_TOKEN=ghp_...` in your shell |
+| `claude: command not found` | `npm install -g @anthropic-ai/claude-code` |
+
+</details>
+
 ### Install
 
 ```bash
