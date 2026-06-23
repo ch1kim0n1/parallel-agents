@@ -19,4 +19,12 @@ describe("createProgram", () => {
   it("registers the review command", () => {
     expect(createProgram().commands.some((command) => command.name() === "review")).toBe(true);
   });
+
+  it("registers the validate command (issue #76)", () => {
+    expect(createProgram().commands.some((command) => command.name() === "validate")).toBe(true);
+  });
+
+  it("registers the doctor command", () => {
+    expect(createProgram().commands.some((command) => command.name() === "doctor")).toBe(true);
+  });
 });
