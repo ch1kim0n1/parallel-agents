@@ -47,6 +47,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="h-screen overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)] antialiased">
         <Providers>{children}</Providers>
         <ServiceWorkerRegistrar />
+        <footer className="fixed bottom-0 left-0 z-10 px-4 py-1 text-xs text-[var(--color-text-secondary)] opacity-60 hover:opacity-100">
+          <a href="/legal/terms" className="hover:underline">Terms</a>
+          <span className="mx-1">·</span>
+          <a href="/legal/privacy" className="hover:underline">Privacy</a>
+        </footer>
       </body>
     </html>
   );
