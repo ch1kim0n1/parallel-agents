@@ -41,6 +41,29 @@ jobs:
       - name: Test
         run: pnpm test
 
+  audit:
+    name: Dependency Audit (CVE gate)
+    runs-on: ubuntu-latest
+    # Fail CI on high/critical CVEs (issue #75). Warnings are reported
+    # but do not fail — triage them in a follow-up PR.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.18.3"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit (fail on high/critical)
+        run: pnpm audit --audit-level high
+
   secret-scan:
     name: Secret Scanning
     runs-on: ubuntu-latest

@@ -1,0 +1,61 @@
+# Dependabot configuration — weekly dependency update PRs (issue #75).
+# Keeps dependencies patched against CVEs without manual toil.
+# PRs are opened weekly; merge after CI passes (lint, typecheck, test, build).
+
+version: 2
+
+updates:
+  # Root pnpm workspace — production + dev deps
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: "deps:"
+    # Group minor + patch updates to reduce PR noise.
+    # Major updates get separate PRs for review.
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Per-package npm deps (catches packages not covered by root)
+  - package-ecosystem: npm
+    directory: "/packages/core"
+    schedule:
+      interval: weekly
+    labels: [dependencies, security]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/packages/web"
+    schedule:
+      interval: weekly
+    labels: [dependencies, security]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/packages/cli"
+    schedule:
+      interval: weekly
+    labels: [dependencies, security]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # GitHub Actions — keep action versions current
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]

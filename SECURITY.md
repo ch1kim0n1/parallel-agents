@@ -55,6 +55,23 @@ This repository uses [Gitleaks](https://github.com/gitleaks/gitleaks) to prevent
 - **npm audit** — Runs in CI to detect known vulnerabilities in dependencies
 - **Automated Updates** — Dependabot (or similar) for security patches
 
+### CVE Response SLA
+
+| Severity | Response Time | Fix Target |
+|----------|--------------|------------|
+| Critical | 24 hours | Patch within 48 hours, release within 72 hours |
+| High | 48 hours | Patch within 7 days |
+| Medium | 7 days | Patch in next release cycle |
+| Low | 30 days | Patch when convenient |
+
+**CI gate:** `pnpm audit --audit-level high` runs on every PR and push.
+High/critical CVEs fail CI and block merges. Medium/low are reported but
+do not fail — triage in a follow-up PR.
+
+**Dependabot:** Weekly update PRs for npm + GitHub Actions. Minor/patch
+updates are grouped to reduce noise; major updates get separate PRs for
+review. Merge after CI passes (lint, typecheck, test, build).
+
 ## Best Practices for Developers
 
 ### Never Commit Secrets
