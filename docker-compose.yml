@@ -1,0 +1,44 @@
+# docker-compose.yml — local development with containers (issue #72).
+#
+# Usage:
+#   docker compose up              # start dashboard
+#   docker compose up --build      # rebuild after code changes
+#   docker compose down            # stop + remove containers
+#
+# Data persists in the agentmesh-data volume. Config is mounted from
+# ./agent-orchestrator.yaml (create from example first).
+
+services:
+  agentmesh:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: agentmesh:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persistent data: sessions, events, config.
+      - agentmesh-data:/data
+      # Mount local config (read-only) — create from example first:
+      #   cp agent-orchestrator.yaml.example agent-orchestrator.yaml
+      - ./agent-orchestrator.yaml:/data/agent-orchestrator.yaml:ro
+    environment:
+      # Override AO_HOME to match the volume mount.
+      - AO_HOME=/data
+      - HOME=/data
+      # Auth token (issue #62) — set in .env or override on command line.
+      - AO_API_TOKEN=${AO_API_TOKEN:-}
+      # Sentry (issue #66) — optional.
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      # GitHub token — required for GitHub tracker/SCM.
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  agentmesh-data:

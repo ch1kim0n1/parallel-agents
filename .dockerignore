@@ -1,0 +1,66 @@
+# .dockerignore — exclude files from Docker build context (issue #72).
+# Reduces build context size + prevents secrets from leaking into images.
+
+# Dependencies (will be reinstalled in builder stage).
+node_modules
+**/node_modules
+
+# Build artifacts (will be rebuilt in builder stage).
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+
+# Logs.
+*.log
+**/*.log
+error.log*
+
+# Secrets — never bake into image.
+.env
+.env.local
+.env.*.local
+agent-orchestrator.yaml
+agent-orchestrator.prod.yaml
+*.key
+*.pem
+secrets.yaml
+credentials.json
+
+# Data volume contents — mounted at runtime, not baked in.
+.agent-orchestrator
+~/.agent-orchestrator
+
+# Git.
+.git
+.gitignore
+
+# CI / docs / dev tooling.
+.github
+.husky
+.vscode
+.idea
+docs/assets
+demo-visuals
+*.md
+!TERMS.md
+!PRIVACY.md
+!SECURITY.md
+!README.md
+
+# Test files.
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+coverage
+**/coverage
+
+# OS / editor cruft.
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
