@@ -11,6 +11,7 @@ import { registerOpen } from "./commands/open.js";
 import { registerStart, registerStop } from "./commands/start.js";
 import { registerVerify } from "./commands/verify.js";
 import { registerDoctor } from "./commands/doctor.js";
+import { registerValidate } from "./commands/validate.js";
 import { registerUpdate } from "./commands/update.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerPlugin } from "./commands/plugin.js";
@@ -46,6 +47,7 @@ export function createProgram(): Command {
   registerOpen(program);
   registerVerify(program);
   registerDoctor(program);
+  registerValidate(program);
   registerUpdate(program);
   registerSetup(program);
   registerPlugin(program);
