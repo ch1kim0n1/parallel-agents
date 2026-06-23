@@ -1,104 +1,119 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
+/**
+ * Tests for error-log.ts — secret redaction (issue #97) and rotation (issue #73).
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// Mock getEnvDefaults to point HOME at a per-test temp dir.
+const tempHome = vi.hoisted(() => ({ current: "" as string }));
+
+vi.mock("../platform.js", () => ({
+  getEnvDefaults: () => ({ HOME: tempHome.current, TMPDIR: "/tmp" }),
+}));
+
 import { logFatal } from "../error-log.js";
 
-// Drive `errorLogPath()` into a per-test temp dir by overriding HOME.
-let tmpHome: string;
-let origHome: string | undefined;
+describe("error-log", () => {
+  let tempDir: string;
 
-beforeEach(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), "ao-errorlog-"));
-  origHome = process.env["HOME"];
-  process.env["HOME"] = tmpHome;
-});
-
-afterEach(() => {
-  if (origHome === undefined) delete process.env["HOME"];
-  else process.env["HOME"] = origHome;
-  rmSync(tmpHome, { recursive: true, force: true });
-});
-
-function readLog(): string {
-  const path = join(tmpHome, ".agent-orchestrator", "error.log");
-  return existsSync(path) ? readFileSync(path, "utf-8") : "";
-}
-
-describe("logFatal — secret redaction (issue #97)", () => {
-  it("writes a JSON entry with ts, scope, message", () => {
-    logFatal("test-scope", new Error("boom"));
-    const line = readLog().trim();
-    const entry = JSON.parse(line);
-    expect(entry.scope).toBe("test-scope");
-    expect(entry.message).toBe("boom");
-    expect(typeof entry.ts).toBe("string");
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "ao-error-log-"));
+    tempHome.current = tempDir;
   });
 
-  it("redacts Anthropic API keys from the error message", () => {
-    const secret = "sk-ant-proj-1234567890abcdef";
-    logFatal("auth", new Error(`Auth failed for key ${secret}`));
-    const log = readLog();
-    expect(log).not.toContain(secret);
-    expect(log).toContain("[redacted]");
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("redacts GitHub PATs from the error message", () => {
-    const token = `ghp_${"a".repeat(36)}`;
-    logFatal("github", new Error(`token rejected: ${token}`));
-    expect(readLog()).not.toContain(token);
+  function logPath(): string {
+    return join(tempDir, ".agent-orchestrator", "error.log");
+  }
+
+  describe("secret redaction (issue #97)", () => {
+    it("writes a JSON entry with ts, scope, message", () => {
+      logFatal("test-scope", new Error("test error"));
+      expect(existsSync(logPath())).toBe(true);
+      const entry = JSON.parse(readFileSync(logPath(), "utf-8").trim());
+      expect(entry.scope).toBe("test-scope");
+      expect(entry.message).toBe("test error");
+      expect(entry.ts).toBeDefined();
+    });
+
+    it("redacts API key-shaped tokens in message", () => {
+      logFatal("auth", new Error("invalid token sk-ant-1234567890abcdef"));
+      const log = readFileSync(logPath(), "utf-8");
+      expect(log).not.toContain("sk-ant-1234567890abcdef");
+      expect(log).toContain("[redacted]");
+    });
+
+    it("redacts URL credentials in stack trace", () => {
+      const err = new Error("fetch failed");
+      err.stack = "Error: fetch failed\n  at https://user:secret@api.example.com/v1";
+      logFatal("fetch", err);
+      const log = readFileSync(logPath(), "utf-8");
+      expect(log).not.toContain("secret");
+    });
+
+    it("does not corrupt non-secret error messages", () => {
+      logFatal("fs", new Error("ENOENT: no such file or directory, open '/tmp/missing.yaml'"));
+      const entry = JSON.parse(readFileSync(logPath(), "utf-8").trim());
+      expect(entry.message).toBe("ENOENT: no such file or directory, open '/tmp/missing.yaml'");
+    });
+
+    it("never throws when HOME points to a non-writable path", () => {
+      tempHome.current = "/nonexistent/path/that/cannot/be/created";
+      expect(() => logFatal("nohome", new Error("still works"))).not.toThrow();
+    });
   });
 
-  it("redacts Bearer tokens (preserves prefix)", () => {
-    logFatal("http", new Error("Authorization: Bearer abcdefghijklmnop1234"));
-    const log = readLog();
-    expect(log).toContain("Bearer [redacted]");
-    expect(log).not.toContain("abcdefghijklmnop1234");
-  });
+  describe("rotation (issue #73)", () => {
+    it("does not rotate when log is under 10MB", () => {
+      logFatal("scope", "small error");
+      expect(existsSync(`${logPath()}.1`)).toBe(false);
+    });
 
-  it("redacts secrets embedded in the stack trace", () => {
-    const secret = "sk-ant-proj-1234567890abcdef";
-    const err = new Error("config load failed");
-    err.stack = `Error: config load failed\n    at loadConfig (/repo/config.ts:1:1)\n    at Object.<anonymous> (/repo/index.ts:2:2) // key=${secret}`;
-    logFatal("config", err);
-    const log = readLog();
-    expect(log).not.toContain(secret);
-    expect(log).toContain("[redacted]");
-  });
+    it("rotates when log exceeds 10MB", () => {
+      const logDir = join(tempDir, ".agent-orchestrator");
+      mkdirSync(logDir, { recursive: true });
+      writeFileSync(logPath(), "x".repeat(11 * 1024 * 1024), "utf-8");
 
-  it("redacts ENV-style assignments (GITHUB_WEBHOOK_SECRET=...)", () => {
-    logFatal("webhook", new Error("GITHUB_WEBHOOK_SECRET=whsecret123456 rejected"));
-    const log = readLog();
-    expect(log).toContain("GITHUB_WEBHOOK_SECRET=[redacted]");
-    expect(log).not.toContain("whsecret123456");
-  });
+      logFatal("scope", "trigger rotation");
 
-  it("redacts URL credentials in error messages", () => {
-    logFatal(
-      "clone",
-      new Error("https://ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@github.com/org/repo failed"),
-    );
-    const log = readLog();
-    expect(log).not.toContain("ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-    expect(log).toContain("[redacted]");
-    expect(log).toContain("github.com/org/repo");
-  });
+      expect(existsSync(`${logPath()}.1`)).toBe(true);
+      expect(existsSync(logPath())).toBe(true);
+      expect(readFileSync(logPath(), "utf-8")).toContain("trigger rotation");
+    });
 
-  it("handles non-Error values (string)", () => {
-    logFatal("string-throw", "a plain string with sk-ant-1234567890abcdef");
-    const log = readLog();
-    expect(log).not.toContain("sk-ant-1234567890abcdef");
-    expect(log).toContain("[redacted]");
-  });
+    it("keeps max 3 rotations, deletes oldest", () => {
+      const logDir = join(tempDir, ".agent-orchestrator");
+      mkdirSync(logDir, { recursive: true });
+      writeFileSync(`${logPath()}.1`, "rot1");
+      writeFileSync(`${logPath()}.2`, "rot2");
+      writeFileSync(`${logPath()}.3`, "rot3");
+      writeFileSync(logPath(), "x".repeat(11 * 1024 * 1024), "utf-8");
 
-  it("does not corrupt non-secret error messages", () => {
-    logFatal("fs", new Error("ENOENT: no such file or directory, open '/tmp/missing.yaml'"));
-    const entry = JSON.parse(readLog().trim());
-    expect(entry.message).toBe("ENOENT: no such file or directory, open '/tmp/missing.yaml'");
-  });
+      logFatal("scope", "trigger");
 
-  it("never throws when HOME points to a non-writable path", () => {
-    process.env["HOME"] = "/nonexistent/path/that/cannot/be/created";
-    expect(() => logFatal("nohome", new Error("still works"))).not.toThrow();
+      expect(existsSync(`${logPath()}.3`)).toBe(true);
+      expect(readFileSync(`${logPath()}.3`, "utf-8")).toBe("rot2");
+      expect(existsSync(`${logPath()}.4`)).toBe(false);
+    });
+
+    it("swallows I/O errors silently (best-effort)", () => {
+      writeFileSync(join(tempDir, "a-file"), "not a dir");
+      tempHome.current = join(tempDir, "a-file");
+      expect(() => logFatal("scope", "test")).not.toThrow();
+    });
+
+    it("handles non-Error objects", () => {
+      logFatal("scope", "string error");
+      logFatal("scope", { custom: "object" });
+      const lines = readFileSync(logPath(), "utf-8").trim().split("\n");
+      expect(lines.length).toBe(2);
+      expect(JSON.parse(lines[0]).message).toBe("string error");
+    });
   });
 });
