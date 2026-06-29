@@ -68,7 +68,7 @@
     "@aoagents/ao-plugin-tracker-linear": "workspace:*",
     "@aoagents/ao-plugin-workspace-worktree": "workspace:*",
     "@sentry/nextjs": "^10.58.0",
-    "@xterm/addon-fit": "0.12.0-beta.256",
+    "@xterm/addon-fit": "0.12.0-beta.288",
     "@xterm/addon-unicode11": "0.10.0-beta.256",
     "@xterm/addon-web-links": "0.13.0-beta.256",
     "@xterm/addon-webgl": "0.20.0-beta.255",
