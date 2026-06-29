@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@aoagents/ao-core": "workspace:*",
-    "@composio/core": "^0.9.0",
+    "@composio/core": "^0.13.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
